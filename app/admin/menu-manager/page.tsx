@@ -320,9 +320,9 @@ export default function MenuManager() {
                                       const file = e.target.files?.[0];
                                       if (!file) return;
                                       
-                                      // Validate size (optional max 10MB test)
-                                      if(file.size > 10 * 1024 * 1024) {
-                                          toast.error('File too large. Max 10MB allowed.');
+                                      // Validate size (max 100MB)
+                                      if(file.size > 100 * 1024 * 1024) {
+                                          toast.error('File too large. Max 100MB allowed.');
                                           return;
                                       }
 

@@ -16,12 +16,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 })
     }
 
-    // Updated limit to 50MB as requested
-    const MAX_SIZE = 50 * 1024 * 1024; 
+    // Updated limit to 100MB as requested
+    const MAX_SIZE = 100 * 1024 * 1024; 
     if (file.size > MAX_SIZE) {
       return NextResponse.json({ 
         error: 'File size too large', 
-        details: 'The image exceeds the 50MB limit. Please compress the image or upload a smaller file.' 
+        details: 'The image exceeds the 100MB limit. Please compress the image or upload a smaller file.' 
       }, { status: 400 })
     }
 

@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'The Royal Comfort',
   webDir: 'public',
   server: {
-    url: 'https://menu-gamma-three.vercel.app',
+    url: 'https://royalrestro.vercel.app',
     cleartext: true
   },
   plugins: {
