@@ -9,7 +9,7 @@ import shutil
 
 # Source logo image path
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SOURCE_IMAGE = os.path.join(SCRIPT_DIR, "public", "logo.jpg")
+SOURCE_IMAGE = os.path.join(SCRIPT_DIR, "public", "logo.png")
 
 # Android res directory
 RES_DIR = os.path.join(SCRIPT_DIR, "android", "app", "src", "main", "res")

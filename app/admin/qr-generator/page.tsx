@@ -6,6 +6,66 @@ import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import Link from 'next/link'
 
+// Helper function to composite restaurant logo into the center of the QR code
+function attachLogoToQr(qrDataUrl: string, logoSrc: string): Promise<string> {
+  return new Promise((resolve) => {
+    if (typeof window === 'undefined') return resolve(qrDataUrl)
+    const canvas = document.createElement('canvas')
+    const ctx = canvas.getContext('2d')
+    const qrImg = new window.Image()
+    qrImg.crossOrigin = 'anonymous'
+    qrImg.onload = () => {
+      const size = qrImg.width || 500
+      canvas.width = size
+      canvas.height = size
+      if (!ctx) return resolve(qrDataUrl)
+
+      // Draw QR Code
+      ctx.drawImage(qrImg, 0, 0, size, size)
+
+      // Load Logo
+      const logoImg = new window.Image()
+      logoImg.crossOrigin = 'anonymous'
+      logoImg.onload = () => {
+        const logoSize = Math.round(size * 0.22)
+        const center = size / 2
+        const bgRadius = Math.round(logoSize / 2 + 6)
+
+        // Draw white background circle for logo with shadow
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(center, center, bgRadius, 0, Math.PI * 2)
+        ctx.fillStyle = '#FFFFFF'
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.25)'
+        ctx.shadowBlur = 8
+        ctx.fill()
+        ctx.restore()
+
+        // Draw gold/primary circular border around logo
+        ctx.beginPath()
+        ctx.arc(center, center, bgRadius - 1, 0, Math.PI * 2)
+        ctx.strokeStyle = '#D4AF37'
+        ctx.lineWidth = 3
+        ctx.stroke()
+
+        // Clip circular logo inside the badge
+        ctx.save()
+        ctx.beginPath()
+        ctx.arc(center, center, logoSize / 2, 0, Math.PI * 2)
+        ctx.clip()
+        ctx.drawImage(logoImg, center - logoSize / 2, center - logoSize / 2, logoSize, logoSize)
+        ctx.restore()
+
+        resolve(canvas.toDataURL('image/png'))
+      }
+      logoImg.onerror = () => resolve(qrDataUrl)
+      logoImg.src = logoSrc
+    }
+    qrImg.onerror = () => resolve(qrDataUrl)
+    qrImg.src = qrDataUrl
+  })
+}
+
 export default function QRGenerator() {
   const [qrUrl, setQrUrl] = useState('')
   const [qrBlob, setQrBlob] = useState('')
@@ -21,8 +81,11 @@ export default function QRGenerator() {
     Promise.all([
       fetch(`/api/admin/qr?url=${encodeURIComponent(`${baseUrl}/menu`)}`).then(res => res.json()),
       fetch('/api/admin/settings').then(res => res.json()).catch(() => ({}))
-    ]).then(([qrData, settingsData]) => {
-      setQrBlob(qrData.qrDataUrl)
+    ]).then(async ([qrData, settingsData]) => {
+      if (qrData?.qrDataUrl) {
+        const brandedQr = await attachLogoToQr(qrData.qrDataUrl, '/logo.png')
+        setQrBlob(brandedQr)
+      }
       if (settingsData && settingsData.name) setRestaurantInfo(settingsData)
       setLoading(false)
     }).catch(() => {
@@ -89,13 +152,15 @@ export default function QRGenerator() {
             <h2 className="text-2xl font-bold font-playfair text-primary mt-4 mb-1 italic">{restaurantInfo?.name || 'The Royal Comfort'}</h2>
             <p className="text-[10px] uppercase font-bold text-text-secondary opacity-60 mb-6 underline decoration-accent underline-offset-4 tracking-widest">Digital Menu</p>
             
-            <div className="bg-background p-4 rounded-[2rem] border-2 border-primary mb-8 relative group">
+            <div className="bg-background p-4 rounded-[2rem] border-2 border-primary mb-8 relative group shadow-sm">
                 {loading ? (
                     <div className="w-64 h-64 flex items-center justify-center">
                         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
                     </div>
                 ) : (
-                    <img src={qrBlob} alt="Menu QR" className="w-64 h-64 rounded-xl" />
+                    <div className="relative w-64 h-64">
+                      <img src={qrBlob} alt="Menu QR" className="w-full h-full rounded-xl" />
+                    </div>
                 )}
             </div>
 
