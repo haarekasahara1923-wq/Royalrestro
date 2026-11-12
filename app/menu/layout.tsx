@@ -1,0 +1,11 @@
+export default function MenuLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
+  return (
+    <div className="min-h-screen bg-background w-full">
+      {children}
+    </div>
+  )
+}
