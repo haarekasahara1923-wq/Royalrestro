@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Download, Share2, Copy, Check, ExternalLink, ChevronRight } from 'lucide-react'
+import { Download, Share2, Copy, Check, ExternalLink, ChevronRight, Hotel, Utensils, QrCode } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import Link from 'next/link'
@@ -41,7 +41,7 @@ function attachLogoToQr(qrDataUrl: string, logoSrc: string): Promise<string> {
         ctx.fill()
         ctx.restore()
 
-        // Draw gold/primary circular border around logo
+        // Draw gold circular border around logo
         ctx.beginPath()
         ctx.arc(center, center, bgRadius - 1, 0, Math.PI * 2)
         ctx.strokeStyle = '#D4AF37'
@@ -67,19 +67,36 @@ function attachLogoToQr(qrDataUrl: string, logoSrc: string): Promise<string> {
 }
 
 export default function QRGenerator() {
+  const [qrType, setQrType] = useState<'welcome' | 'table' | 'room'>('table')
+  const [targetNumber, setTargetNumber] = useState('1')
   const [qrUrl, setQrUrl] = useState('')
   const [qrBlob, setQrBlob] = useState('')
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(true)
   const [restaurantInfo, setRestaurantInfo] = useState<any>(null)
 
+  // Compute URL based on type and target number
   useEffect(() => {
+    if (typeof window === 'undefined') return
     const baseUrl = window.location.origin
-    setQrUrl(`${baseUrl}/menu`)
-    
-    // Fetch QR code from API or generate locally, and fetch restaurant info
+    let generated = `${baseUrl}/welcome`
+
+    if (qrType === 'table') {
+      generated = `${baseUrl}/welcome?table=${encodeURIComponent(targetNumber)}`
+    } else if (qrType === 'room') {
+      generated = `${baseUrl}/welcome?room=${encodeURIComponent(targetNumber)}`
+    }
+
+    setQrUrl(generated)
+  }, [qrType, targetNumber])
+
+  // Fetch / Generate QR code image whenever qrUrl changes
+  useEffect(() => {
+    if (!qrUrl) return
+    setLoading(true)
+
     Promise.all([
-      fetch(`/api/admin/qr?url=${encodeURIComponent(`${baseUrl}/menu`)}`).then(res => res.json()),
+      fetch(`/api/admin/qr?url=${encodeURIComponent(qrUrl)}`).then(res => res.json()),
       fetch('/api/admin/settings').then(res => res.json()).catch(() => ({}))
     ]).then(async ([qrData, settingsData]) => {
       if (qrData?.qrDataUrl) {
@@ -91,7 +108,7 @@ export default function QRGenerator() {
     }).catch(() => {
       setLoading(false)
     })
-  }, [])
+  }, [qrUrl])
 
   const copyLink = () => {
     navigator.clipboard.writeText(qrUrl)
@@ -104,7 +121,8 @@ export default function QRGenerator() {
     if (!qrBlob) return
     const a = document.createElement('a')
     a.href = qrBlob
-    a.download = 'RoyalComfort-Menu-QR.png'
+    const nameLabel = qrType === 'table' ? `Table-${targetNumber}` : qrType === 'room' ? `Room-${targetNumber}` : 'General'
+    a.download = `RoyalComfort-QR-${nameLabel}.png`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -117,8 +135,8 @@ export default function QRGenerator() {
         const blob = await response.blob()
         const file = new File([blob], 'menu-qr.png', { type: 'image/png' })
         await navigator.share({
-          title: `${restaurantInfo?.name || 'The Royal Comfort Hotel and Restaurant'} Digital Menu`,
-          text: 'Scan this QR to view our digital menu and place an order!',
+          title: `${restaurantInfo?.name || 'The Royal Comfort Hotel and Restaurant'} QR`,
+          text: `Scan to order at ${qrType === 'table' ? `Table ${targetNumber}` : qrType === 'room' ? `Room ${targetNumber}` : 'The Royal Comfort'}`,
           files: [file],
         })
       } catch (err) {
@@ -129,6 +147,8 @@ export default function QRGenerator() {
     }
   }
 
+  const destinationLabel = qrType === 'table' ? `Table ${targetNumber}` : qrType === 'room' ? `Room ${targetNumber}` : 'General Welcome'
+
   return (
     <div className="min-h-screen bg-[#FFF8F0] p-6 lg:p-10 font-poppins">
       <header className="mb-10 max-w-4xl mx-auto">
@@ -137,11 +157,13 @@ export default function QRGenerator() {
           <ChevronRight className="w-3 h-3" />
           <span>QR Generator</span>
         </div>
-        <h1 className="text-4xl font-bold font-playfair text-primary">QR Generator</h1>
-        <p className="text-text-secondary mt-1">Branded menu QR codes for tables and marketing</p>
+        <h1 className="text-4xl font-bold font-playfair text-primary">QR Code Generator</h1>
+        <p className="text-text-secondary mt-1">
+          Generate branded QR codes for tables and rooms. Customers scan to enter their name & phone before ordering.
+        </p>
       </header>
 
-      <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-center">
+      <div className="max-w-4xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-10 items-start">
         {/* QR Preview Card */}
         <motion.div 
             initial={{ scale: 0.9, opacity: 0 }}
@@ -149,10 +171,14 @@ export default function QRGenerator() {
             className="bg-white p-8 rounded-[3rem] shadow-2xl border border-border flex flex-col items-center text-center relative overflow-hidden"
         >
             <div className="absolute top-0 left-0 w-full h-2 bg-primary"></div>
-            <h2 className="text-2xl font-bold font-playfair text-primary mt-4 mb-1 italic">{restaurantInfo?.name || 'The Royal Comfort'}</h2>
-            <p className="text-[10px] uppercase font-bold text-text-secondary opacity-60 mb-6 underline decoration-accent underline-offset-4 tracking-widest">Digital Menu</p>
+            <h2 className="text-2xl font-bold font-playfair text-primary mt-4 mb-1 italic">
+              {restaurantInfo?.name || 'The Royal Comfort'}
+            </h2>
+            <div className="inline-block bg-[#D4AF37]/20 border border-[#D4AF37] px-4 py-1 rounded-full text-xs font-bold text-gray-800 mb-6">
+              {destinationLabel}
+            </div>
             
-            <div className="bg-background p-4 rounded-[2rem] border-2 border-primary mb-8 relative group shadow-sm">
+            <div className="bg-background p-4 rounded-[2rem] border-2 border-primary mb-6 relative group shadow-sm">
                 {loading ? (
                     <div className="w-64 h-64 flex items-center justify-center">
                         <div className="w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -165,25 +191,91 @@ export default function QRGenerator() {
             </div>
 
             <p className="text-xs font-bold text-[#6B4226] flex items-center gap-2 mb-2 bg-[#FFF8F0] px-4 py-2 rounded-full">
-                <span className="text-lg">📱</span> Scan to View Menu & Order
+                <span className="text-lg">📱</span> Scan to Register & Order
             </p>
-            <p className="text-[10px] text-text-secondary opacity-60 italic">{restaurantInfo?.address || 'Hotel and Restaurant'}</p>
+            <p className="text-[10px] text-text-secondary opacity-60 italic">
+              {restaurantInfo?.address || 'Hotel and Restaurant'}
+            </p>
         </motion.div>
 
         {/* Controls */}
         <div className="space-y-6">
+            {/* QR Destination Selector */}
+            <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm space-y-4">
+                <label className="text-xs font-bold text-text-secondary uppercase block">
+                  Select QR Destination Type
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setQrType('table'); setTargetNumber('1') }}
+                    className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
+                      qrType === 'table'
+                        ? 'bg-primary text-white border-primary shadow-md'
+                        : 'bg-background text-gray-700 border-border hover:bg-border/30'
+                    }`}
+                  >
+                    <Utensils className="w-4 h-4" />
+                    Table QR
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setQrType('room'); setTargetNumber('101') }}
+                    className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
+                      qrType === 'room'
+                        ? 'bg-primary text-white border-primary shadow-md'
+                        : 'bg-background text-gray-700 border-border hover:bg-border/30'
+                    }`}
+                  >
+                    <Hotel className="w-4 h-4" />
+                    Room QR
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setQrType('welcome')}
+                    className={`p-3 rounded-xl border text-xs font-bold flex flex-col items-center gap-1.5 transition-all ${
+                      qrType === 'welcome'
+                        ? 'bg-primary text-white border-primary shadow-md'
+                        : 'bg-background text-gray-700 border-border hover:bg-border/30'
+                    }`}
+                  >
+                    <QrCode className="w-4 h-4" />
+                    General QR
+                  </button>
+                </div>
+
+                {qrType !== 'welcome' && (
+                  <div className="pt-2 border-t border-border/60">
+                    <label className="text-xs font-bold text-text-secondary uppercase mb-1.5 block">
+                      {qrType === 'table' ? 'Table Number' : 'Room Number'}
+                    </label>
+                    <input 
+                      type="text" 
+                      value={targetNumber}
+                      onChange={(e) => setTargetNumber(e.target.value)}
+                      placeholder={qrType === 'table' ? 'e.g. 1, 2, 3, VIP-1' : 'e.g. 101, 102, 204'}
+                      className="w-full bg-background border border-border p-3.5 rounded-xl font-bold text-base focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+                )}
+            </div>
+
+            {/* URL Display */}
             <div className="bg-white p-6 rounded-[2rem] border border-border shadow-sm">
-                <label className="text-xs font-bold text-text-secondary uppercase mb-2 block">Menu URL</label>
+                <label className="text-xs font-bold text-text-secondary uppercase mb-2 block">Destination URL</label>
                 <div className="flex gap-2">
                     <input 
                         type="text" 
                         readOnly 
                         value={qrUrl}
-                        className="flex-1 bg-background border border-border p-3 rounded-xl text-sm font-mono focus:outline-none"
+                        className="flex-1 bg-background border border-border p-3 rounded-xl text-xs font-mono focus:outline-none"
                     />
                     <button 
                         onClick={copyLink}
                         className="p-3 bg-primary text-white rounded-xl hover:bg-primary-light transition-all shadow-md"
+                        title="Copy Link"
                     >
                         {copied ? <Check className="w-5 h-5" /> : <Copy className="w-5 h-5" />}
                     </button>
@@ -191,36 +283,37 @@ export default function QRGenerator() {
                         href={qrUrl} 
                         target="_blank" 
                         className="p-3 bg-white border border-border text-text-secondary rounded-xl hover:bg-border/20 transition-all shadow-sm"
+                        title="Open in new tab"
                     >
                         <ExternalLink className="w-5 h-5" />
                     </a>
                 </div>
             </div>
 
+            {/* Actions */}
             <div className="grid grid-cols-1 gap-4">
                 <button 
                     onClick={handleDownload}
                     className="w-full bg-primary text-white py-4 rounded-2xl font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all flex items-center justify-center gap-2 text-lg"
                 >
                     <Download className="w-6 h-6" />
-                    Download Branded QR
+                    Download {destinationLabel} QR
                 </button>
                 <button 
                     onClick={handleShare}
                     className="w-full bg-white border-2 border-primary text-primary py-4 rounded-2xl font-bold hover:bg-primary hover:text-white transition-all flex items-center justify-center gap-2"
                 >
                     <Share2 className="w-6 h-6" />
-                    Share via Native App
+                    Share QR
                 </button>
             </div>
 
             <div className="bg-orange-50 border border-orange-100 p-6 rounded-[2rem]">
                 <h4 className="font-bold text-orange-800 mb-2 flex items-center gap-2">
-                    💡 Pro Tip
+                    💡 QR Scan Flow
                 </h4>
                 <p className="text-xs text-orange-700 leading-relaxed">
-                    Printed QR codes look best on table tents or acrylic stands. 
-                    The "Branded QR" includes our restaurant logo and address automatically.
+                  When a customer scans this QR, they will see a Welcome screen with your Royal Comfort logo to enter their Name, WhatsApp Phone, and pre-filled table/room number. All new orders and reorders will ring sound alerts at Admin, Kitchen, and Reception!
                 </p>
             </div>
         </div>

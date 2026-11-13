@@ -80,6 +80,12 @@ export function generateWhatsAppReceipt(order: any, restaurant: any): string {
   if (order.customerName) {
     lines.push(`Cust: ${order.customerName}`);
   }
+  if (order.tableNumber) {
+    lines.push(`Table/Room: ${order.tableNumber}`);
+  }
+  if (order.customerPhone) {
+    lines.push(`Phone: ${order.customerPhone}`);
+  }
   
   lines.push('----------------------------------');
   lines.push('#  Item Name      Qty  Rate Amount');
@@ -138,6 +144,13 @@ export function generateWhatsAppReceipt(order: any, restaurant: any): string {
   const totalValue = `₹${Number(order.total || 0).toFixed(2)}`;
   lines.push(totalLabel + ' '.repeat(Math.max(1, width - totalLabel.length - totalValue.length)) + totalValue);
   
+  lines.push('----------------------------------');
+  if (order.paymentStatus === 'paid') {
+    lines.push(centerText(`STATUS: PAID [${(order.paymentMethod || 'CASH').toUpperCase()}]`, width));
+  } else {
+    lines.push(centerText('STATUS: PAYMENT PENDING', width));
+    lines.push(centerText('Pay via Cash, UPI or Card', width));
+  }
   lines.push('==================================');
   lines.push(centerText('Thank you! Visit Again.', width));
   

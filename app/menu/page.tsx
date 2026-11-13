@@ -1,8 +1,8 @@
-'use client' // Version: 1.0.1 - Updated layout and data cleanup
+'use client' // Version: 1.0.2 - Updated with customer welcome banner and session integration
 
 import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ShoppingBag, MapPin, Phone, ChevronRight } from 'lucide-react'
+import { ShoppingBag, MapPin, Phone, ChevronRight, Utensils, Edit3 } from 'lucide-react'
 import { useCart } from '@/lib/store'
 import { DishCard } from '@/components/menu/DishCard'
 import { CategoryTabs } from '@/components/menu/CategoryTabs'
@@ -11,6 +11,7 @@ import { Logo } from '@/components/Logo'
 import { Footer } from '@/components/Footer'
 import { BottomNav } from '@/components/navigation/BottomNav'
 import { HamburgerMenu } from '@/components/navigation/HamburgerMenu'
+import Link from 'next/link'
 
 export default function MenuPage() {
   const [categories, setCategories] = useState<any[]>([])
@@ -18,9 +19,23 @@ export default function MenuPage() {
   const [loading, setLoading] = useState(true)
   const [isCartOpen, setIsCartOpen] = useState(false)
   const [restaurantInfo, setRestaurantInfo] = useState<any>(null)
+  const [customerInfo, setCustomerInfo] = useState<{
+    name: string
+    phone: string
+    tableNumber: string
+  } | null>(null)
+
   const cart = useCart()
 
   useEffect(() => {
+    // Check saved customer info
+    try {
+      const stored = localStorage.getItem('customer_info') || localStorage.getItem('rcCustomerSession')
+      if (stored) {
+        setCustomerInfo(JSON.parse(stored))
+      }
+    } catch {}
+
     Promise.all([
       fetch('/api/menu').then(res => res.json()),
       fetch('/api/admin/settings').then(res => res.json()).catch(() => ({}))
@@ -63,12 +78,46 @@ export default function MenuPage() {
             </div>
           )}
         </div>
+
+        {/* Customer Welcome / Table Info Bar */}
+        <div className="max-w-[1920px] mx-auto w-full px-2 md:px-8 mt-3 pt-2.5 border-t border-white/15 flex items-center justify-between text-xs">
+          {customerInfo ? (
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2 truncate">
+                <span className="bg-[#D4AF37] text-black font-extrabold px-2 py-0.5 rounded-full text-[10px] tracking-wide uppercase">
+                  {customerInfo.tableNumber || 'Dine-in'}
+                </span>
+                <span className="truncate opacity-95">
+                  Welcome, <strong className="font-bold">{customerInfo.name}</strong>
+                </span>
+              </div>
+              <Link 
+                href="/welcome" 
+                className="text-[11px] underline opacity-80 hover:opacity-100 flex items-center gap-1 flex-shrink-0 ml-2"
+              >
+                <Edit3 className="w-3 h-3" />
+                Change
+              </Link>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between w-full">
+              <span className="text-[11px] opacity-90">
+                🍽️ Dining at table or room?
+              </span>
+              <Link 
+                href="/welcome" 
+                className="text-[11px] font-bold text-[#D4AF37] hover:underline flex items-center gap-1"
+              >
+                Set Table / Room Number →
+              </Link>
+            </div>
+          )}
+        </div>
       </header>
 
       <div className="flex flex-col lg:flex-row flex-1 max-w-[1920px] mx-auto w-full md:px-8 pb-24">
-        {/* ... (rest of the content) */}
         {/* Categories Sidebar/TopTabs */}
-        <aside className="lg:w-72 lg:sticky lg:top-32 lg:h-[calc(100vh-10rem)] py-6 z-40 bg-background lg:pr-8">
+        <aside className="lg:w-72 lg:sticky lg:top-36 lg:h-[calc(100vh-10rem)] py-6 z-40 bg-background lg:pr-8">
           <div className="px-4 lg:px-0">
             <h2 className="hidden lg:block text-xl font-bold font-playfair mb-6 text-primary border-b border-primary/10 pb-4">Menu Categories</h2>
             <div className="lg:flex lg:flex-col lg:gap-3">
@@ -90,7 +139,7 @@ export default function MenuPage() {
             <div className="bg-gradient-to-r from-[#F4A261] to-[#E76F51] rounded-3xl p-8 md:p-12 text-white overflow-hidden relative shadow-xl min-h-[220px] flex flex-col justify-center">
                 <div className="relative z-10">
                     <h2 className="text-3xl md:text-5xl font-bold font-playfair mb-4 drop-shadow-md tracking-tight">Authentic Flavors</h2>
-                    <p className="text-base md:text-lg opacity-90 max-w-[420px] font-medium leading-relaxed">Experience a taste that feels like home, prepared fresh and served with love.</p>
+                    <p className="text-base md:text-lg opacity-90 max-w-[420px] font-medium leading-relaxed">Experience a taste that feels like home, prepared fresh and served with royal hospitality.</p>
                 </div>
                 <div className="absolute right-[-40px] top-[-40px] bg-white/20 w-80 h-80 rounded-full blur-[100px]"></div>
                 <div className="absolute left-[-40px] bottom-[-40px] bg-white/10 w-60 h-60 rounded-full blur-[80px]"></div>
